@@ -23,50 +23,55 @@ class Status:
 	paused = True
 	# To change "controls" to Status
 
-class EmptyContainer:
+class EmptyHContainer:
 	items = []
 
-	def __init__(self, pos):
-		self.objects = []
+	def __init__(self, pos=(0, 0)):
+		self.content = []
 
-		self.pos = pos
-		self.size = (0, 0)
-		self.rect = pygame.Rect(self.pos, self.size)
+		self.rect = pygame.Rect(pos, (0, 0))
 
 		self.items.append(self)
 
-	def append(self, class_name, pos=None, size=None):
-		if pos is None:
-			pos = tuple((self.pos[0] + self.size[0], self.pos[1]))
+	def append(self, obj):
+		self.content.append(obj)
+		obj.setPos(add_tuples(self.rect.topleft, (self.rect.width, 0)))
 
-		if size is None:
-			obj = class_name(pos)
-		else:
-			obj = class_name(pos, size)
+		self.rect.width += obj.rect.width
+		if obj.rect.height > self.rect.height:
+			self.rect.height = obj.rect.height
+		# self.rect.size = add_tuples(self.rect.size, obj.rect.size)
+		# EmptyHContainer.numbercontent += 1
+		# print(EmptyHContainer.numbercontent) ## DEBUGGING
 
-		self.objects.append(obj)
-		# EmptyContainer.numberObjects += 1
-		# print(EmptyContainer.numberObjects) ## DEBUGGING
 
-		self.size = add_tuples(self.size, obj.size)
-		self.rect = pygame.Rect(self.pos, self.size)
+		self.rect.width += obj.rect.width
+		if obj.rect.height > self.rect.height:
+			self.rect.height = obj.rect.height
+		# self.rect = pygame.Rect(self.pos, self.size)
+
+	def setPos(self, pos):
+		self.rect.topleft = pos
+
+	def setsize(self, size):
+		self.rect.size = size
 
 	def blit(self, screen):
-		for obj in self.objects:
+		for obj in self.content:
 			obj.blit(screen)
 
 		# self.rect = pygame.Rect(self.pos, self.size)
 
 	def clicked(self, pos):
-		for obj in self.objects:
+		for obj in self.content:
 			obj.clicked(self, pos)
 
 
-class SongItem(EmptyContainer):
+class SongItem(EmptyHContainer):
 	# items = []
 
-	def __init__(self, song_path, pos):
-		EmptyContainer.__init__(self, pos)
+	def __init__(self, pos, song_path):
+		EmptyHContainer.__init__(self, pos)
 		print(self.items)
 		# self.pos = pos
 		self.song_path = song_path
@@ -74,15 +79,17 @@ class SongItem(EmptyContainer):
 		print(self.song_name)
 
 		# self.append(RewindButton)
-		self.append(PlayButton)
-		self.append(EmptyObject, size=(18, 36))
+		playBtn = PlayButton()
+		self.append(playBtn)
+		emptyObj = EmptyObject(size=(18, 36))
+		self.append(emptyObj)
 		# self.played = False
 		# self.paused = True
 
 	def play(self):
 		for song_item in SongItem.items:
 			song_item.reset()
-			for obj in song_item.objects:
+			for obj in song_item.content:
 				obj.reset()
 
 		pygame.mixer.music.load(self.song_path)
@@ -106,22 +113,17 @@ class SongItem(EmptyContainer):
 
 
 class EmptyObject:
-	def __init__(self, pos, size=None):
-		self.pos = pos
-		if size is not None:
-			self.size = size
-		self.rect = pygame.Rect(self.pos, self.size)
+	def __init__(self, pos=(0, 0), size=(0, 0)):
+		self.rect = pygame.Rect(pos, size)
 
 	def clicked(self, controls, pos):
 		pass
 
 	def setPos(self, pos):
-		self.pos = pos
-		self.rect = pygame.Rect(self.pos, self.size)
+		self.rect.topleft = pos
 
 	def setsize(self, size):
-		self.size = size
-		self.rect = pygame.Rect(self.pos, self.size)
+		self.rect.size = size
 
 	def blit(self, screen):
 		pass
@@ -137,8 +139,8 @@ class PlayButton(EmptyObject):
 	pauseImage = pygame.image.load("./data/img/pauseBtn.png").convert_alpha()
 	pauseImage = pygame.transform.scale(pauseImage, size)
 
-	def __init__(self, pos):
-		EmptyObject.__init__(self, pos)
+	def __init__(self, pos=(0, 0)):
+		EmptyObject.__init__(self, pos, self.size)
 		self.image = self.playImage
 		# self.pos = pos
 		# self.rect = pygame.Rect(self.pos, self.size)
@@ -148,7 +150,7 @@ class PlayButton(EmptyObject):
 		# 	self.image = self.playImage
 		# else:
 		# 	self.image = self.pauseImage
-		screen.blit(self.image, self.pos)
+		screen.blit(self.image, self.rect.topleft)
 
 	def clicked(self, controls, pos):
 		if self.rect.collidepoint(pos):
@@ -173,11 +175,11 @@ class RewindButton(EmptyObject):
 	image = pygame.image.load("./data/img/rewindBtn.png").convert_alpha()
 	image = pygame.transform.scale(image, size)
 
-	def __init__(self, pos):
+	def __init__(self, pos=(0, 0)):
 		EmptyObject.__init__(self, pos)
 
 	def blit(self, screen):
-		screen.blit(self.image, self.pos)
+		screen.blit(self.image, self.rect.topleft)
 
 	def clicked(self, controls, pos):
 		if self.rect.collidepoint(pos):
@@ -185,7 +187,7 @@ class RewindButton(EmptyObject):
 
 
 
-def text(screen, msg, pos, size, color=(224, 224, 224)): #merci a alex pour l'affichage du texte :) | de rien comme d'hab ;)
+def text(screen, msg, pos, size, color=(224, 224, 224)): # merci a alex pour l'affichage du texte :) | de rien comme d'hab ;)
 	fontObj = pygame.font.Font('freesansbold.ttf', int(size))
 	textSurfaceObj = fontObj.render(msg, True, color)
 	textRectObj = textSurfaceObj.get_rect()
@@ -214,23 +216,25 @@ musicList = []
 for music_name in music_names:
 	musicList.append("{}{}".format(music_dir, music_name))
 
-objects = []
+content = []
 # playBtn = PlayButton()
 # playBtn2 = PlayButton()
-song = SongItem(musicList[0], (50, 50))
+song = SongItem((200, 200), musicList[0])
+
 # song.append(RewindButton)
 # song.append(EmptyObject, sizeObj=(18, 36))
 # song.append(PlayButton)
 # ctrls.append(PlayButton)
 
-song2 = SongItem(musicList[1], (150, 150))
+song2 = SongItem((150, 150), musicList[1])
 # song2.append(PlayButton)
 
-# objects.append(song)
-# objects.append(song2)
+content.append(song)
+content.append(song2)
 
+print(EmptyHContainer.items)
 # for item in SongItem.items:
-# 	for obj in item.objects:
+# 	for obj in item.content:
 # 		print(obj)
 
 while True:
@@ -244,7 +248,7 @@ while True:
 
 		if event.type == pygame.MOUSEBUTTONUP:
 			cursorPos = event.pos
-			for obj in EmptyContainer.items:
+			for obj in content:
 				if obj.rect.collidepoint(cursorPos):
 					obj.clicked(cursorPos)
 					break
