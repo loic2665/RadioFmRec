@@ -17,6 +17,13 @@ def add_tuples(tup1, tup2):
 	tup = tuple(ls)
 	return tup
 
+def substract_tuples(tup1, tup2):
+	ls1 = list(tup1)
+	ls2 = list(tup2)
+	ls = [x - y for x, y in zip(tup1, tup2)]
+	tup = tuple(ls)
+	return tup
+
 def getSongName(song_path):
 	ls = song_path.split("/")
 	return ls[-1]
@@ -28,39 +35,21 @@ class Status:
 	paused = True
 
 
-class EmptyHContainer:
+class EmptyGenericContainer:
 	items = []
-
-	def __init__(self, pos=(0, 0)):
+	def __init__(self, pos):
 		self.content = []
-
 		self.rect = pygame.Rect(pos, (0, 0))
 
 		self.items.append(self)
 
+
 	def append(self, obj):
 		self.content.append(obj)
-		obj.setPos(self.rect.topright)
-
-		self.rect.width += obj.rect.width
-		if obj.rect.height > self.rect.height:
-			self.rect.height = obj.rect.height
-		# self.rect.size = add_tuples(self.rect.size, obj.rect.size)
-		# EmptyHContainer.numbercontent += 1
-		# print(EmptyHContainer.numbercontent) ## DEBUGGING
-		# self.rect = pygame.Rect(self.pos, self.size)
-
-	def setPos(self, pos):
-		self.rect.topleft = pos
-
-	def setsize(self, size):
-		self.rect.size = size
 
 	def blit(self, screen):
 		for obj in self.content:
 			obj.blit(screen)
-
-		# self.rect = pygame.Rect(self.pos, self.size)
 
 	def clicked(self, pos):
 		for obj in self.content:
@@ -68,11 +57,65 @@ class EmptyHContainer:
 				obj.clicked(pos)
 				break
 
+	def setPos(self, pos):
+		relPos = substract_tuples(pos, self.rect.topleft)
+
+		self.rect.topleft = pos
+		for obj in self.content:
+			obj.setPos(add_tuples(obj.rect.topleft, relPos))
+
+
+class EmptyHContainer(EmptyGenericContainer):
+	def append(self, obj):
+		EmptyGenericContainer.append(self, obj)
+
+		obj.setPos(self.rect.topright)
+		self.rect.width += obj.rect.width
+		if obj.rect.height > self.rect.height:
+			self.rect.height = obj.rect.height
+
+
+class EmptyVContainer(EmptyGenericContainer):
+	def append(self, obj):
+		EmptyGenericContainer.append(self, obj)
+
+		obj.setPos(self.rect.bottomleft)
+		self.rect.height += obj.rect.height
+		if obj.rect.width > self.rect.width:
+			self.rect.width = obj.rect.width
+
+
+class EmptyObject:
+	def __init__(self, pos=(0, 0), size=(0, 0)):
+		self.rect = pygame.Rect(pos, size)
+
+	def clicked(self, pos):
+		pass
+
+	def blit(self, screen):
+		pass
+
+	def reset(self):
+		pass
+
+	def setPos(self, pos):
+		self.rect.topleft = pos
+
+
+class PlayList(EmptyVContainer):
+	def __init__(self, pos=(0, 0)):
+		EmptyVContainer.__init__(self, pos)
+
+	def append(self, obj):
+		EmptyVContainer.append(self, obj)
+
+		spaceObj = EmptyObject(size=(self.rect.width, 10))
+		EmptyVContainer.append(self, spaceObj)
+
 
 class SongItem(EmptyHContainer):
-	# items = []
-
-	def __init__(self, pos, song_path):
+	items = []
+	def __init__(self, song_path, pos=(0, 0)):
 		EmptyHContainer.__init__(self, pos)
 		print(self.items)
 		# self.pos = pos
@@ -99,7 +142,7 @@ class SongItem(EmptyHContainer):
 		pygame.mixer.music.load(self.song_path)
 		Status.current_song_path = self.song_path
 		pygame.mixer.music.play()
-		# self.played = True
+
 		Status.played = True
 		Status.paused = False
 
@@ -116,26 +159,6 @@ class SongItem(EmptyHContainer):
 		Status.paused = True
 
 
-class EmptyObject:
-	def __init__(self, pos=(0, 0), size=(0, 0)):
-		self.rect = pygame.Rect(pos, size)
-
-	def clicked(self, pos):
-		pass
-
-	def setPos(self, pos):
-		self.rect.topleft = pos
-
-	def setsize(self, size):
-		self.rect.size = size
-
-	def blit(self, screen):
-		pass
-
-	def reset(self):
-		pass
-
-
 class PlayButton(EmptyObject):
 	size = (36, 36)
 	playImage = pygame.image.load("./data/img/play.png").convert_alpha()
@@ -147,9 +170,6 @@ class PlayButton(EmptyObject):
 		EmptyObject.__init__(self, pos, self.size)
 		self.parent = parent
 		self.image = self.playImage
-
-		# self.pos = pos
-		# self.rect = pygame.Rect(self.pos, self.size)
 
 	def blit(self, screen):
 		screen.blit(self.image, self.rect.topleft)
@@ -232,17 +252,21 @@ for music_name in music_names:
 
 content = []
 
-song1 = SongItem((30, 60), musicList[0])
-song2 = SongItem((30, 100), musicList[1])
-song3 = SongItem((30, 140), musicList[2])
-song4 = SongItem((30, 180), musicList[3])
+song1 = SongItem(musicList[0])
+song2 = SongItem(musicList[1])
+song3 = SongItem(musicList[2])
+song4 = SongItem(musicList[3])
 rewBtn = RewindButton(pos=(10, 270))
 # text = Label("Test", 15)
 
-content.append(song1)
-content.append(song2)
-content.append(song3)
-content.append(song4)
+vCont = PlayList(pos=(30, 60))
+
+vCont.append(song1)
+vCont.append(song2)
+vCont.append(song3)
+vCont.append(song4)
+
+content.append(vCont)
 content.append(rewBtn)
 
 print(EmptyHContainer.items)
@@ -267,10 +291,11 @@ while True:
 					break
 
 	screen.blit(background, (0, 0))
-	song1.blit(screen)
-	song2.blit(screen)
-	song3.blit(screen)
-	song4.blit(screen)
+	# song1.blit(screen)
+	# song2.blit(screen)
+	# song3.blit(screen)
+	# song4.blit(screen)
+	vCont.blit(screen)
 	rewBtn.blit(screen)
 	# text.blit(screen)
 	pygame.display.update()
