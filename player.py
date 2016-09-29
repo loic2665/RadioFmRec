@@ -95,9 +95,6 @@ class EmptyObject:
 	def blit(self, screen):
 		pass
 
-	def reset(self):
-		pass
-
 	def setPos(self, pos):
 		self.rect.topleft = pos
 
@@ -126,18 +123,22 @@ class SongItem(EmptyHContainer):
 		# self.append(RewindButton)
 		playBtn = PlayButton(self)
 		self.append(playBtn)
-		emptyObj = EmptyObject(size=(18, 36))
-		self.append(emptyObj)
+
 		textObj = Label(self.song_name, 18)
 		self.append(textObj)
 		# self.played = False
 		# self.paused = True
 
+	def append(self, obj):
+		EmptyHContainer.append(self, obj)
+		spaceObj = EmptyObject(size=(18, self.rect.height))
+		EmptyHContainer.append(self, spaceObj)
+
 	def play(self):
-		for song_item in SongItem.items:
-			song_item.reset()
-			for obj in song_item.content:
-				obj.reset()
+		# for song_item in SongItem.items:
+		# 	song_item.reset()
+		# 	for obj in song_item.content:
+		# 		obj.reset()
 
 		pygame.mixer.music.load(self.song_path)
 		Status.current_song_path = self.song_path
@@ -154,10 +155,6 @@ class SongItem(EmptyHContainer):
 		pygame.mixer.music.unpause()
 		Status.paused = False
 
-	def reset(self):
-		Status.played = False
-		Status.paused = True
-
 
 class PlayButton(EmptyObject):
 	size = (36, 36)
@@ -170,9 +167,6 @@ class PlayButton(EmptyObject):
 		EmptyObject.__init__(self, pos, self.size)
 		self.parent = parent
 		self.image = self.playImage
-
-	def blit(self, screen):
-		screen.blit(self.image, self.rect.topleft)
 
 	def clicked(self, pos):
 		print("CLICKED ON PLAY {}".format(self.rect)) ## DEBUGGING
@@ -187,8 +181,44 @@ class PlayButton(EmptyObject):
 				self.parent.unpause()
 				self.image = self.pauseImage
 
-	def reset(self):
+	def blit(self, screen):
+		if Status.current_song_path == self.parent.song_path \
+		and Status.played == True and Status.paused == False:
+			screen.blit(self.pauseImage, self.rect.topleft)
+		else:
+			screen.blit(self.playImage, self.rect.topleft)
+
+
+class GlobalPlayButton(EmptyObject):
+	size = (36, 36)
+	playImage = pygame.image.load("./data/img/play.png").convert_alpha()
+	playImage = pygame.transform.scale(playImage, size)
+	pauseImage = pygame.image.load("./data/img/pauseBtn.png").convert_alpha()
+	pauseImage = pygame.transform.scale(pauseImage, size)
+
+	def __init__(self, pos=(0, 0)):
+		EmptyObject.__init__(self, pos, self.size)
 		self.image = self.playImage
+
+	def clicked(self, pos):
+		print("CLICKED ON PLAY {}".format(self.rect)) ## DEBUGGING
+		if Status.played == False:
+			pygame.mixer.music.play()
+		else:
+			if Status.paused == False:
+				pygame.mixer.music.pause()
+				Status.paused = True
+				self.image = self.playImage
+			else:
+				pygame.mixer.music.unpause()
+				Status.paused = False
+				self.image = self.pauseImage
+
+	def blit(self, screen):
+		if Status.played == True and Status.paused == False:
+			screen.blit(self.pauseImage, self.rect.topleft)
+		else:
+			screen.blit(self.playImage, self.rect.topleft)
 
 
 class RewindButton(EmptyObject):
@@ -199,11 +229,11 @@ class RewindButton(EmptyObject):
 	def __init__(self, pos=(0, 0)):
 		EmptyObject.__init__(self, pos, self.size)
 
-	def blit(self, screen):
-		screen.blit(self.image, self.rect.topleft)
-
 	def clicked(self, pos):
 		pygame.mixer.music.rewind()
+
+	def blit(self, screen):
+		screen.blit(self.image, self.rect.topleft)
 
 
 class Label(EmptyObject):
@@ -215,11 +245,13 @@ class Label(EmptyObject):
 		self.rect.topleft = pos
 		# screen.blit(textSurfaceObj, textRectObj)
 
+	def clicked(self, pos):
+		pass
+
 	def blit(self, screen):
 		screen.blit(self.textObj, self.rect)
 
-	def clicked(self, pos):
-		pass
+
 			# pygame.mixer.music.rewind()
 
 
@@ -256,18 +288,22 @@ song1 = SongItem(musicList[0])
 song2 = SongItem(musicList[1])
 song3 = SongItem(musicList[2])
 song4 = SongItem(musicList[3])
-rewBtn = RewindButton(pos=(10, 270))
-# text = Label("Test", 15)
-
 vCont = PlayList(pos=(30, 60))
-
 vCont.append(song1)
 vCont.append(song2)
 vCont.append(song3)
 vCont.append(song4)
 
+rewBtn = RewindButton()
+spaceObj = EmptyObject(size=(18, 0))
+globalPlayBtn = GlobalPlayButton()
+globalCtrls = EmptyHContainer(pos=(10, 270))
+globalCtrls.append(rewBtn)
+globalCtrls.append(spaceObj)
+globalCtrls.append(globalPlayBtn)
+
 content.append(vCont)
-content.append(rewBtn)
+content.append(globalCtrls)
 
 print(EmptyHContainer.items)
 # for item in SongItem.items:
@@ -296,7 +332,7 @@ while True:
 	# song3.blit(screen)
 	# song4.blit(screen)
 	vCont.blit(screen)
-	rewBtn.blit(screen)
+	globalCtrls.blit(screen)
 	# text.blit(screen)
 	pygame.display.update()
 	FPSCLOCK.tick(60)
