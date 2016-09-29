@@ -7,6 +7,8 @@ import os
 pygame.init()
 FPSCLOCK = pygame.time.Clock()
 pygame.mixer.init()
+END_MUSIC_EVENT = pygame.USEREVENT + 0
+pygame.mixer.music.set_endevent(END_MUSIC_EVENT)
 screen = pygame.display.set_mode((480, 320))
 
 
@@ -166,20 +168,20 @@ class PlayButton(EmptyObject):
 	def __init__(self, parent, pos=(0, 0)):
 		EmptyObject.__init__(self, pos, self.size)
 		self.parent = parent
-		self.image = self.playImage
+		# self.image = self.playImage
 
 	def clicked(self, pos):
 		print("CLICKED ON PLAY {}".format(self.rect)) ## DEBUGGING
 		if Status.played == False or self.parent.song_path != Status.current_song_path:
 			self.parent.play()
-			self.image = self.pauseImage
+			# self.image = self.pauseImage
 		else:
 			if Status.paused == False:
 				self.parent.pause()
-				self.image = self.playImage
+				# self.image = self.playImage
 			else:
 				self.parent.unpause()
-				self.image = self.pauseImage
+				# self.image = self.pauseImage
 
 	def blit(self, screen):
 		if Status.current_song_path == self.parent.song_path \
@@ -198,21 +200,23 @@ class GlobalPlayButton(EmptyObject):
 
 	def __init__(self, pos=(0, 0)):
 		EmptyObject.__init__(self, pos, self.size)
-		self.image = self.playImage
+		# self.image = self.playImage
 
 	def clicked(self, pos):
 		print("CLICKED ON PLAY {}".format(self.rect)) ## DEBUGGING
 		if Status.played == False:
 			pygame.mixer.music.play()
+			Status.played = True
+			Status.paused = False
 		else:
 			if Status.paused == False:
 				pygame.mixer.music.pause()
 				Status.paused = True
-				self.image = self.playImage
+				# self.image = self.playImage
 			else:
 				pygame.mixer.music.unpause()
 				Status.paused = False
-				self.image = self.pauseImage
+				# self.image = self.pauseImage
 
 	def blit(self, screen):
 		if Status.played == True and Status.paused == False:
@@ -288,21 +292,21 @@ song1 = SongItem(musicList[0])
 song2 = SongItem(musicList[1])
 song3 = SongItem(musicList[2])
 song4 = SongItem(musicList[3])
-vCont = PlayList(pos=(30, 60))
-vCont.append(song1)
-vCont.append(song2)
-vCont.append(song3)
-vCont.append(song4)
+playlist = PlayList(pos=(30, 60))
+playlist.append(song1)
+playlist.append(song2)
+playlist.append(song3)
+playlist.append(song4)
 
 rewBtn = RewindButton()
-spaceObj = EmptyObject(size=(18, 0))
+spaceObj = EmptyObject(size=(10, 0))
 globalPlayBtn = GlobalPlayButton()
 globalCtrls = EmptyHContainer(pos=(10, 270))
 globalCtrls.append(rewBtn)
 globalCtrls.append(spaceObj)
 globalCtrls.append(globalPlayBtn)
 
-content.append(vCont)
+content.append(playlist)
 content.append(globalCtrls)
 
 print(EmptyHContainer.items)
@@ -326,12 +330,18 @@ while True:
 					obj.clicked(cursorPos)
 					break
 
+		if event.type == END_MUSIC_EVENT and event.code == 0:
+			Status.played = False
+			Status.paused = True
+			print("END")
+			print(Status.current_song_path)
+
 	screen.blit(background, (0, 0))
 	# song1.blit(screen)
 	# song2.blit(screen)
 	# song3.blit(screen)
 	# song4.blit(screen)
-	vCont.blit(screen)
+	playlist.blit(screen)
 	globalCtrls.blit(screen)
 	# text.blit(screen)
 	pygame.display.update()
