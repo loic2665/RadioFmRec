@@ -5,32 +5,11 @@ import datetime
 import os
 
 pygame.init()
+screen = pygame.display.set_mode((480, 320))
 FPSCLOCK = pygame.time.Clock()
 pygame.mixer.init()
 END_MUSIC_EVENT = pygame.USEREVENT + 0
 pygame.mixer.music.set_endevent(END_MUSIC_EVENT)
-screen = pygame.display.set_mode((480, 320))
-
-
-def add_tuples(tup1, tup2):
-	ls1 = list(tup1)
-	ls2 = list(tup2)
-	ls = [x + y for x, y in zip(tup1, tup2)]
-	tup = tuple(ls)
-	return tup
-
-def substract_tuples(tup1, tup2):
-	ls1 = list(tup1)
-	ls2 = list(tup2)
-	ls = [x - y for x, y in zip(tup1, tup2)]
-	tup = tuple(ls)
-	return tup
-
-def getSongName(song_path):
-	pathLs = song_path.split("/")
-	fileNameLs = pathLs[-1].split(".")
-	songName = fileNameLs[0]
-	return songName
 
 
 class Player:
@@ -54,64 +33,118 @@ class Player:
 		pygame.mixer.music.unpause()
 		Player.paused = False
 
+from utils import *
+from generics import *
 
-class GenericContainer:
-	items = []
-	def __init__(self, pos):
-		self.content = []
-		self.rect = pygame.Rect(pos, (0, 0))
 
-		self.items.append(self)
+class Playlist(HContainer):
+	def __init__(self, pos=(0, 0)):
+		HContainer.__init__(self, pos)
+		self.pages = []
+		self.backBtn = BackButton(self)
+		HContainer.append(self, self.backBtn)
+		self.mainPage = GenericObject(size=(384, 174))
+		self.mainPage.enabled = False
+		HContainer.append(self, self.mainPage)
+		self.forwardBtn = ForwardButton(self)
+		HContainer.append(self, self.forwardBtn)
 
-	def append(self, obj):
-		self.content.append(obj)
+		HContainer.centerContent(self)
+		# self.content.append(self.pages)
+		self.pageNumber = 0
+
+	def appendPage(self, page):
+		page.setAbsPos(self.mainPage.rect.topleft)
+		self.pages.append(page)
+
+	def getRef(self, pos=(0, 0)):
+		for obj in self.content:
+			if obj.enabled == True:
+				if obj.rect.collidepoint(pos):
+					objRef = obj.getRef(pos)
+					return objRef
+
+		for obj in self.pages:
+			if obj.enabled == True:
+				if obj.rect.collidepoint(pos):
+					objRef = obj.getRef(pos)
+					return objRef
+		return self
 
 	def blit(self, screen):
-		for obj in self.content:
-			obj.blit(screen)
+		self.backBtn.blit(screen)
 
-	def clicked(self, pos):
-		for obj in self.content:
-			if obj.rect.collidepoint(pos):
-				obj.clicked(pos)
-				break
+		self.pages[self.pageNumber].blit(screen)
+		self.forwardBtn.blit(screen)
 
-	def setPos(self, pos):
-		relPos = substract_tuples(pos, self.rect.topleft)
+class BackButton(GenericButton):
+	size = GenericButton.size
+	image = pygame.image.load("./data/img/backBtn.png").convert_alpha()
+	image = pygame.transform.scale(image, size)
 
-		self.rect.topleft = pos
-		for obj in self.content:
-			obj.setPos(add_tuples(obj.rect.topleft, relPos))
+	def __init__(self, playlistObj, pos=(0, 0)):
+		GenericButton.__init__(self, pos)
+		self.playlistObj = playlistObj
+		self.enabled = False
+		# self.image = self.playImage
 
+	def onClick(self, pos=(0, 0)):
+		if self.enabled is True:
+			self.playlistObj.pages[self.playlistObj.pageNumber].enabled = False
+			self.playlistObj.pageNumber -= 1
+			self.playlistObj.pages[self.playlistObj.pageNumber].enabled = True
 
-class HContainer(GenericContainer):
-	def append(self, obj):
-		GenericContainer.append(self, obj)
+			# tempPos = self.playlistObj.pages[self.playlistObj.pageNumber].rect.topleft
+			self.playlistObj.pages[self.playlistObj.pageNumber].setAbsPos(self.playlistObj.mainPage.rect.topleft)
+			# self.playlistObj.pages[0].rect.topleft = tempPos
 
-		obj.setPos(self.rect.topright)
-		self.rect.width += obj.rect.width
-		if obj.rect.height > self.rect.height:
-			self.rect.height = obj.rect.height
+			self.playlistObj.forwardBtn.enabled = True
+			if self.playlistObj.pageNumber == 0:
+				self.enabled = False
 
-
-class VContainer(GenericContainer):
-	def append(self, obj):
-		GenericContainer.append(self, obj)
-
-		obj.setPos(self.rect.bottomleft)
-		self.rect.height += obj.rect.height
-		if obj.rect.width > self.rect.width:
-			self.rect.width = obj.rect.width
+	def blit(self, screen):
+		if self.enabled is True:
+			screen.blit(self.image, self.rect.topleft)
 
 
-class Playlist(VContainer):
+class ForwardButton(GenericButton):
+	size = GenericButton.size
+	image = pygame.image.load("./data/img/forwardBtn.png").convert_alpha()
+	image = pygame.transform.scale(image, size)
+
+	def __init__(self, playlistObj, pos=(0, 0)):
+		GenericButton.__init__(self, pos)
+		self.playlistObj = playlistObj
+		# self.image = self.playImage
+
+	def onClick(self, pos=(0, 0)):
+		print("CLICKED")
+		if self.enabled is True:
+			self.playlistObj.pages[self.playlistObj.pageNumber].enabled = False
+			self.playlistObj.pageNumber += 1
+			self.playlistObj.pages[self.playlistObj.pageNumber].enabled = True
+
+			# tempPos = self.playlistObj.pages[self.playlistObj.pageNumber].rect.topleft
+			self.playlistObj.pages[self.playlistObj.pageNumber].setAbsPos(self.playlistObj.mainPage.rect.topleft)
+			# self.playlistObj.pages[0].rect.topleft = tempPos
+
+			self.playlistObj.backBtn.enabled = True
+			if self.playlistObj.pageNumber == len(self.playlistObj.pages) - 1:
+				self.enabled = False
+
+	def blit(self, screen):
+		if self.enabled is True:
+			screen.blit(self.image, self.rect.topleft)
+
+
+class Page(VContainer):
 	def __init__(self, pos=(0, 0)):
 		VContainer.__init__(self, pos)
 
 	def append(self, obj):
 		VContainer.append(self, obj)
 
-		spaceObj = GenericObject(size=(self.rect.width, 10))
+		spaceObj = GenericObject(size=(0, 10))
 		VContainer.append(self, spaceObj)
 
 
@@ -136,8 +169,12 @@ class SongItem(HContainer):
 
 	def append(self, obj):
 		HContainer.append(self, obj)
-		spaceObj = GenericObject(size=(18, self.rect.height))
+		spaceObj = GenericObject(size=(18, 0))
 		HContainer.append(self, spaceObj)
+
+		for iterateObj in self.content:
+			yVector = self.rect.centery - iterateObj.rect.centery
+			iterateObj.setRelPos((0, yVector))
 
 	def play(self):
 		pygame.mixer.music.load(self.song_path)
@@ -151,45 +188,19 @@ class SongItem(HContainer):
 		Player.unpause()
 
 
-class GenericObject:
-	def __init__(self, pos=(0, 0), size=(0, 0)):
-		self.rect = pygame.Rect(pos, size)
-
-	def clicked(self, pos):
-		pass
-
-	def blit(self, screen):
-		pass
-
-	def setPos(self, pos):
-		self.rect.topleft = pos
-
-
-class GenericButton(GenericObject):
-	size = (36, 36)
-	def __init__(self, pos=(0, 0)):
-		print(self)
-		print("\n")
-		GenericObject.__init__(self, pos, self.size)
-
-
-class GenericPlayButton(GenericButton):
+class SongPlayButton(GenericButton):
 	size = GenericButton.size
 	playImage = pygame.image.load("./data/img/playBtn.png").convert_alpha()
 	playImage = pygame.transform.scale(playImage, size)
 	pauseImage = pygame.image.load("./data/img/pauseBtn.png").convert_alpha()
 	pauseImage = pygame.transform.scale(pauseImage, size)
-	def __init__(self, pos=(0, 0)):
-		GenericButton.__init__(self, pos)
 
-
-class SongPlayButton(GenericPlayButton):
 	def __init__(self, songItemObj, pos=(0, 0)):
-		GenericPlayButton.__init__(self, pos)
+		GenericButton.__init__(self, pos)
 		self.songItemObj = songItemObj
 		# self.image = self.playImage
 
-	def clicked(self, pos):
+	def onClick(self, pos=(0, 0)):
 		print("CLICKED ON PLAY {}".format(self.rect)) ## DEBUGGING
 		if Player.played == False or self.songItemObj.song_path != Player.current_song_path:
 			self.songItemObj.play()
@@ -210,11 +221,17 @@ class SongPlayButton(GenericPlayButton):
 			screen.blit(self.playImage, self.rect.topleft)
 
 
-class GlobalPlayButton(GenericPlayButton):
-	def __init__(self, pos=(0, 0)):
-		GenericPlayButton.__init__(self, pos)
+class GlobalPlayButton(GenericButton):
+	size = GenericButton.size
+	playImage = pygame.image.load("./data/img/playBtn.png").convert_alpha()
+	playImage = pygame.transform.scale(playImage, size)
+	pauseImage = pygame.image.load("./data/img/pauseBtn.png").convert_alpha()
+	pauseImage = pygame.transform.scale(pauseImage, size)
 
-	def clicked(self, pos):
+	def __init__(self, pos=(0, 0)):
+		GenericButton.__init__(self, pos)
+
+	def onClick(self, pos=(0, 0)):
 		print("CLICKED ON PLAY {}".format(self.rect)) ## DEBUGGING
 		if Player.played == False:
 			pygame.mixer.music.play()
@@ -245,7 +262,7 @@ class RewindButton(GenericButton):
 	def __init__(self, pos=(0, 0)):
 		GenericButton.__init__(self, pos)
 
-	def clicked(self, pos):
+	def onClick(self, pos=(0, 0)):
 		pygame.mixer.music.rewind()
 
 	def blit(self, screen):
@@ -255,26 +272,36 @@ class RewindButton(GenericButton):
 class Label(GenericObject):
 	def __init__(self, msg, fontSize, pos=(0, 0), color=(224, 224, 224)):
 		GenericObject.__init__(self, pos)
-		fontObj = pygame.font.Font('freesansbold.ttf', int(fontSize))
-		self.textObj = fontObj.render(msg, True, color)
+		self.fontSize = fontSize
+		self.message = msg[:27]
+		if self.message != msg:
+			self.message += "..."
+
+		self.fontColor = color
+
+		fontObj = pygame.font.Font('freesansbold.ttf', int(self.fontSize))
+		self.textObj = fontObj.render(self.message, True, self.fontColor)
 		self.rect = self.textObj.get_rect()
 		self.rect.topleft = pos
 
-	def clicked(self, pos):
-		pass
-
 	def blit(self, screen):
 		screen.blit(self.textObj, self.rect)
+
+	def changeText(self, msg):
+		self.textObj = fontObj.render(msg, True, self.color)
+		pos = self.rect.topleft
+		self.rect = self.textObj.get_rect()
+		self.rect.topleft = pos
 
 
 fond = pygame.image.load("./data/img/background.png").convert()
 background = pygame.Surface(screen.get_size())
 background.blit(fond, (0, 0))
 
-close = pygame.image.load("./data/img/close.png").convert_alpha()
-close = pygame.transform.scale(close, (36, 36))
-restart = pygame.image.load("./data/img/restart.png").convert_alpha()
-restart = pygame.transform.scale(restart, (32, 32))
+# close = pygame.image.load("./data/img/close.png").convert_alpha()
+# close = pygame.transform.scale(close, (36, 36))
+# restart = pygame.image.load("./data/img/restart.png").convert_alpha()
+# restart = pygame.transform.scale(restart, (32, 32))
 
 music_dir = "./data/rec/"
 music_names = os.listdir("./data/rec/")
@@ -282,17 +309,19 @@ musicList = []
 for music_name in music_names:
 	musicList.append("{}{}".format(music_dir, music_name))
 
-content = []
-
-song1 = SongItem(musicList[0])
-song2 = SongItem(musicList[1])
-song3 = SongItem(musicList[2])
-song4 = SongItem(musicList[3])
-playlist = Playlist(pos=(30, 60))
-playlist.append(song1)
-playlist.append(song2)
-playlist.append(song3)
-playlist.append(song4)
+playlist = Playlist(pos=(10, 60))
+for i in range(0, len(musicList), 4):
+	page = Page()
+	for songIndex in range(i, i+4):
+		try:
+			song = SongItem(musicList[songIndex])
+			page.append(song)
+		except:
+			break
+	page.remove(-1)
+	page.enabled = False
+	playlist.appendPage(page)
+playlist.pages[0].enabled = True
 
 rewBtn = RewindButton()
 spaceObj = GenericObject(size=(10, 0))
@@ -301,11 +330,17 @@ globalCtrls = HContainer(pos=(10, 270))
 globalCtrls.append(rewBtn)
 globalCtrls.append(spaceObj)
 globalCtrls.append(globalPlayBtn)
+# globalPlayBtn.setAbsPos((0, 0))
 
+content = []
 content.append(playlist)
 content.append(globalCtrls)
 
 print(HContainer.items)
+
+drag = False
+mouseDown = False
+collideObj = None
 
 while True:
 	for event in pygame.event.get():
@@ -313,15 +348,35 @@ while True:
 			pygame.quit()
 			exit()
 
-		if event.type == MOUSEMOTION:
-			cursor = event.pos
+		if event.type == pygame.MOUSEBUTTONDOWN:
+			mouseDown = True
+			cursorPos = event.pos
+			cursorVector = pygame.mouse.get_rel()
+
+			for obj in content:
+				if obj.rect.collidepoint(cursorPos):
+					collideObj = obj.getRef(cursorPos)
+					print("ONE TIME")
+					print(collideObj)
+					break
+
+		if event.type == pygame.MOUSEMOTION:
+			cursorPos = event.pos
+			cursorRelPos = pygame.mouse.get_rel()
+			if mouseDown is True and collideObj is not None:
+				drag = True
+				collideObj.drag(cursorRelPos)
+				print(collideObj)
 
 		if event.type == pygame.MOUSEBUTTONUP:
 			cursorPos = event.pos
-			for obj in content:
-				if obj.rect.collidepoint(cursorPos):
-					obj.clicked(cursorPos)
-					break
+
+			if drag is False and collideObj is not None:
+				collideObj.onClick(cursorPos)
+
+			mouseDown = False
+			drag = False
+			collideObj = None
 
 		if event.type == END_MUSIC_EVENT and event.code == 0:
 			Player.played = False
