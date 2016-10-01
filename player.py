@@ -294,6 +294,23 @@ class Label(GenericObject):
 		self.rect.topleft = pos
 
 
+class CloseButton(GenericButton):
+	size = GenericButton.size
+	image = pygame.image.load("./data/img/closeBtn.png").convert_alpha()
+	image = pygame.transform.scale(image, size)
+
+	def __init__(self, pos=(0, 0)):
+		GenericButton.__init__(self, pos)
+		# self.enabled = True
+
+	def onClick(self, pos=(0, 0)):
+		pygame.quit()
+		exit()
+
+	def blit(self, screen):
+		screen.blit(self.image, self.rect.topleft)
+
+
 fond = pygame.image.load("./data/img/background.png").convert()
 background = pygame.Surface(screen.get_size())
 background.blit(fond, (0, 0))
@@ -331,10 +348,12 @@ globalCtrls.append(rewBtn)
 globalCtrls.append(spaceObj)
 globalCtrls.append(globalPlayBtn)
 # globalPlayBtn.setAbsPos((0, 0))
+closeBtn = CloseButton(pos=(430, 8))
 
 content = []
 content.append(playlist)
 content.append(globalCtrls)
+content.append(closeBtn)
 
 print(HContainer.items)
 
@@ -387,6 +406,7 @@ while True:
 	screen.blit(background, (0, 0))
 	playlist.blit(screen)
 	globalCtrls.blit(screen)
+	closeBtn.blit(screen)
 
 	pygame.display.update()
 	FPSCLOCK.tick(60)
